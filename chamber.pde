@@ -1,10 +1,13 @@
 import java.util.Collections;
+import javax.swing.*;
 
 float SCALE = 1;
-float WALLSTROKE = 0.005;
-float RUNOUT = 0; //2;
-Point bulletP = new Point(1.4486668, 0, "Bullet");
+float WALLSTROKE = 0.003;
+float RUNOUT = 0; //1;
+Point bulletP = new Point(1.4486668 - 0.025, 0, "Bullet");
 Point caseP = new Point(0,0,"Case");
+
+boolean showHandles = true;
 
 class Handle {
   ArrayList<Point> points = new ArrayList<Point>();
@@ -36,6 +39,7 @@ class Handle {
     fill(128,hover() ? 255 : 192,128);
     stroke(0);
     ellipse(points.get(0).x,y,diam,diam);
+    line(points.get(0).x-diam*0.2, y, points.get(0).x+diam*0.2, y);
   }
 }
 
@@ -181,16 +185,26 @@ ArrayList<Handle> handles;
 Handle currentHandle;
 
 void mousePressed() {
-  println("Clicked!");
   currentHandle = null;
   coords();
   for(Handle h : handles) {
     if(h.hover()) {
-      println("Marking current handle");
       currentHandle = h;
     }
   }
   popMatrix();
+}
+
+void keyTyped() {
+  if(key == 's') {
+    JFileChooser fc = new JFileChooser();
+    if(fc.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+      showHandles = false;
+      draw();
+      showHandles = true;
+      saveFrame(fc.getSelectedFile().getPath());
+    }
+  }
 }
 
 void mouseReleased() {
@@ -199,6 +213,7 @@ void mouseReleased() {
 
 void setup() {
   size(1600, 800);
+  frame.setResizable(true);
   smooth();
   cartridge = new Spec("308 Winchester");
   cartridge.add(new Point(0, 0.409, ""));
@@ -235,28 +250,23 @@ void setup() {
   bullet.add(new Point(1.195, 0.175, ""));
   bullet.add(new Point(1.386, 0.073, ""));
 
-  cartridge.exaggerate(0.025);
-  bullet.exaggerate(0.005);
+  cartridge.exaggerate(0.015);
+  bullet.exaggerate(0.00);
   chamber.exaggerate(0);
 
   cartridge.col = color(192, 255, 192, 128);
   bullet.col    = color(255, 192, 192, 128);
   chamber.col   = color(192, 192, 255, 128);
 
-  SCALE = width / (chamber.length() / 0.9);
-  
-  //chamber.points.get(8).x = 2.138667;
-  //chamber.points.get(9).x = 2.138667;
-  cartridge.points.get(6).x = 1.560;
-  cartridge.points.get(7).x = 1.675;
-  cartridge.points.get(8).x = 2.005;
-  cartridge.points.get(9).x = 2.005;
-  
   handles = new ArrayList<Handle>();
   Handle landH = new Handle(-chamber.width()/2.0);
   landH.add(chamber.points.get(8));
   landH.add(chamber.points.get(9));
   handles.add(landH);  
+  
+  Handle freeboreH = new Handle(-chamber.width()/2.0);
+  freeboreH.add(chamber.points.get(7));
+  handles.add(freeboreH);
   
   Handle bulletH = new Handle(0);
   bulletH.add(bulletP);
@@ -265,6 +275,26 @@ void setup() {
   Handle caseH = new Handle(0);
   caseH.add(caseP);
   handles.add(caseH);
+  
+  Handle shoulderH = new Handle(-cartridge.points.get(6).y/2.0 + 0.03);
+  shoulderH.add(cartridge.points.get(6));
+  shoulderH.add(cartridge.points.get(7));
+  handles.add(shoulderH);
+  
+  Handle casemouthH = new Handle(-cartridge.points.get(8).y/2.0 + 0.03);
+  casemouthH.add(cartridge.points.get(8));
+  casemouthH.add(cartridge.points.get(9));
+  handles.add(casemouthH);
+  
+  Handle mouthH = new Handle(-chamber.width()/2.0);
+  mouthH.add(chamber.points.get(5));
+  mouthH.add(chamber.points.get(6));
+  handles.add(mouthH);
+  
+  Handle chamberShoulderH = new Handle(-chamber.width()/2.0);
+  chamberShoulderH.add(chamber.points.get(3));
+  chamberShoulderH.add(chamber.points.get(4));
+  handles.add(chamberShoulderH);
 }
 
 void coords() {
@@ -275,6 +305,8 @@ void coords() {
 }
 
 void draw() {
+  SCALE = width / (chamber.length() / 0.9);
+
   background(255, 255, 224);
   stroke(0);
   strokeWeight(0.007);
@@ -286,7 +318,7 @@ void draw() {
   }
 
   noStroke();
-  fill(0,0,0,64);
+  fill(0,0,0,48);
   rect(0,-chamber.width()/2.0, chamber.length(), chamber.width());
   stroke(0,0,0,32);
   line(0,0,chamber.length(),0);
@@ -309,15 +341,17 @@ void draw() {
   popMatrix();
 
   // Show handles for dragging items in the display
-  for(Handle h : handles) {
-    h.draw();
+  if(showHandles) {
+    for(Handle h : handles) {
+      h.draw();
+    }
   }
   
   popMatrix();
-  textAlign(CENTER, TOP);
-  textSize(48);
+  textAlign(CENTER, BOTTOM);
+  textSize(24);
   fill(255, 128, 0, 255);
-  text("Chamber Simulator", width/2, 20);
+  text("Chamber v0.9, Rifle Simulator\nhttp://github.com/jephthai/chamber/", width/2, height/2.0 - chamber.width()*0.5*SCALE - 20);
   
   fill(0);
   float coal = -caseP.x + bulletP.x + bullet.length();
@@ -326,11 +360,12 @@ void draw() {
   float jump = land - cbto;
   float shou = cartridge.points.get(7).x;
   textSize(13);
+  textAlign(CENTER, TOP);
   String display = String.format("COAL: %.3f\nCBTO: %.3f\nJump: %.3f\nBase: %.3f", 
     coal, cbto, jump, bulletP.x);
-  text(display, 0.33 * width, 0.82*height);
+  text(display, 0.33 * width, height/2.0 + chamber.width()*0.5*SCALE + 20);
   display = String.format("Lands: %.3f\nMouth: %.3f\nShoulder: %.3f\nRunout: %.0f deg", 
     land, cartridge.length(), shou, RUNOUT);
-  text(display, 0.66 * width, 0.82*height);
+  text(display, 0.66 * width, height/2.0 + chamber.width()*0.5*SCALE + 20);
 }
 
