@@ -2,8 +2,42 @@ import java.util.Collections;
 
 float SCALE = 1;
 float WALLSTROKE = 0.005;
-float RUNOUT = 2;
-float bulletX = 1.4486668;
+float RUNOUT = 0; //2;
+Point bulletP = new Point(1.4486668, 0, "Bullet");
+Point caseP = new Point(0,0,"Case");
+
+class Handle {
+  ArrayList<Point> points = new ArrayList<Point>();
+  float diam = 0.04;
+  float y;
+  
+  public Handle(float elev) {
+    this.y = elev;
+  }
+  
+  void add(Point p) {
+    points.add(p);
+  }
+  
+  boolean hover() {
+    PVector p1 = new PVector(mouseX, mouseY);
+    PVector p2 = new PVector(screenX(points.get(0).x, y), screenY(points.get(0).x, y));
+    p1.sub(p2);
+    return p1.mag() < (diam / 2.0 * SCALE);
+  }
+  
+  void move(float amount) {
+    for(Point p : points) {
+      p.x -= amount;
+    }
+  }
+
+  void draw() {
+    fill(128,hover() ? 255 : 192,128);
+    stroke(0);
+    ellipse(points.get(0).x,y,diam,diam);
+  }
+}
 
 class Point {
   float x, y;
@@ -143,9 +177,28 @@ class Spec {
 Spec bullet;
 Spec chamber;
 Spec cartridge;
+ArrayList<Handle> handles;
+Handle currentHandle;
+
+void mousePressed() {
+  println("Clicked!");
+  currentHandle = null;
+  coords();
+  for(Handle h : handles) {
+    if(h.hover()) {
+      println("Marking current handle");
+      currentHandle = h;
+    }
+  }
+  popMatrix();
+}
+
+void mouseReleased() {
+  if(currentHandle != null) currentHandle = null;
+}
 
 void setup() {
-  size(900, 450);
+  size(1600, 800);
   smooth();
   cartridge = new Spec("308 Winchester");
   cartridge.add(new Point(0, 0.409, ""));
@@ -192,14 +245,33 @@ void setup() {
 
   SCALE = width / (chamber.length() / 0.9);
   
-  chamber.points.get(8).x = 2.138667;
-  chamber.points.get(9).x = 2.138667;
+  //chamber.points.get(8).x = 2.138667;
+  //chamber.points.get(9).x = 2.138667;
   cartridge.points.get(6).x = 1.560;
   cartridge.points.get(7).x = 1.675;
   cartridge.points.get(8).x = 2.005;
   cartridge.points.get(9).x = 2.005;
   
-  frameRate(40);
+  handles = new ArrayList<Handle>();
+  Handle landH = new Handle(-chamber.width()/2.0);
+  landH.add(chamber.points.get(8));
+  landH.add(chamber.points.get(9));
+  handles.add(landH);  
+  
+  Handle bulletH = new Handle(0);
+  bulletH.add(bulletP);
+  handles.add(bulletH);
+
+  Handle caseH = new Handle(0);
+  caseH.add(caseP);
+  handles.add(caseH);
+}
+
+void coords() {
+  pushMatrix();
+  translate(width/2, height/2);
+  scale(SCALE);
+  translate(-chamber.length() / 2.0, 0);
 }
 
 void draw() {
@@ -207,10 +279,12 @@ void draw() {
   stroke(0);
   strokeWeight(0.007);
 
-  pushMatrix();
-  translate(width/2, height/2);
-  scale(SCALE);
-  translate(-chamber.length() / 2.0, 0);
+  coords();
+
+  if(currentHandle != null) {
+    currentHandle.move(-(mouseX - pmouseX) / SCALE);
+  }
+
   noStroke();
   fill(0,0,0,64);
   rect(0,-chamber.width()/2.0, chamber.length(), chamber.width());
@@ -219,18 +293,26 @@ void draw() {
   chamber.ipoly();
   chamber.isections();
 
-  if(mousePressed) bulletX = ((mouseX - 0.05*width) / SCALE); // - bullet.length()/2.0;
-  if(bulletX < 0) bulletX = 0;
-  if(bulletX > cartridge.length()) bulletX = cartridge.length();
+  //if(mousePressed) bulletP.x = ((mouseX - 0.05*width) / SCALE); // - bullet.length()/2.0;
+  if(bulletP.x < 0) bulletP.x = 0;
+  if(bulletP.x > cartridge.length()) bulletP.x = cartridge.length();
   pushMatrix();
-  translate(bulletX + bullet.length()/3.0, 0); 
+  translate(bulletP.x + bullet.length()/3.0, 0); 
   rotate(radians(RUNOUT));
   translate(-bullet.length()/3.0, 0);
   bullet.poly();
   popMatrix();
 
+  pushMatrix();
+  translate(caseP.x, caseP.y);
   cartridge.poly();
+  popMatrix();
 
+  // Show handles for dragging items in the display
+  for(Handle h : handles) {
+    h.draw();
+  }
+  
   popMatrix();
   textAlign(CENTER, TOP);
   textSize(48);
@@ -238,14 +320,14 @@ void draw() {
   text("Chamber Simulator", width/2, 20);
   
   fill(0);
-  float coal = bulletX + bullet.length();
-  float cbto = bulletX + bullet.points.get(3).x;
+  float coal = -caseP.x + bulletP.x + bullet.length();
+  float cbto = -caseP.x + bulletP.x + bullet.points.get(3).x;
   float land = chamber.points.get(9).x;
   float jump = land - cbto;
   float shou = cartridge.points.get(7).x;
   textSize(13);
   String display = String.format("COAL: %.3f\nCBTO: %.3f\nJump: %.3f\nBase: %.3f", 
-    coal, cbto, jump, bulletX);
+    coal, cbto, jump, bulletP.x);
   text(display, 0.33 * width, 0.82*height);
   display = String.format("Lands: %.3f\nMouth: %.3f\nShoulder: %.3f\nRunout: %.0f deg", 
     land, cartridge.length(), shou, RUNOUT);
