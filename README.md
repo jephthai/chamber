@@ -41,7 +41,13 @@ in a wobble, which deteriorates accuracy.  (Note: at this time, runout
 is only configured in code -- I'm still struggling with how to do it
 effectively in the GUI):
 
-![Bullet runout](docs/sample-3.png)
+![Bullet runout](docs/sample-4.png)
+
+Here is another example showing a case where the shoulder has been
+bumped too far back during resizing.  This could cause an unsafe
+condition, or at least split the case:
+
+![Shoulder bump error](docs/sample-3.png)
 
 Installation and use
 ====================
