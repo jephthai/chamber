@@ -61,3 +61,7 @@ running the packaged version, you will need to have
 To download and run the Windows version, for example, you can download
 [the ZIP file](chamber-v0.9.zip).  Unzip this using your normal
 method, and double-click on the file named "chamber.exe".
+
+While using the program, adjust the position of those objects that have 
+a green handle.  When you have everything configured the way you want, 
+press 's' to save an image.
